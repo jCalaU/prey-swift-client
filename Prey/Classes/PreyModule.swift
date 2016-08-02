@@ -8,13 +8,6 @@
 
 import Foundation
 
-// Prey Instructions struct
-enum kInstruction: String {
-    case TARGET     = "target"
-    case COMMAND    = "command"
-    case OPTIONS    = "options"
-}
-
 class PreyModule {
     
     // MARK: Properties
@@ -27,15 +20,35 @@ class PreyModule {
     
     // MARK: Functions
 
+    // Check actionArrayStatus
+    func checkActionArrayStatus() {
+        
+        // Check device is missing
+        guard PreyConfig.sharedInstance.isMissing else {
+            return
+        }
+    
+        // Check actionArray
+        guard actionArray.isEmpty else {
+            return
+        }
+        
+        // Add report action
+        if let reportAction:Report = Report(withTarget:kAction.report, withCommand:kCommand.get, withOptions:PreyConfig.sharedInstance.reportOptions) {
+            actionArray.append(reportAction)
+            runAction()
+        }
+    }
+    
     // Parse actions from panel
     func parseActionsFromPanel(actionsStr:String) {
         
-        print("Parse actions from panel \(actionsStr)")
+        PreyLogger("Parse actions from panel \(actionsStr)")
         
         // Convert actionsArray from String to NSData
         guard let jsonData: NSData = actionsStr.dataUsingEncoding(NSUTF8StringEncoding) else {
             
-            print("Error actionsArray to NSData")
+            PreyLogger("Error actionsArray to NSData")
             PreyNotification.sharedInstance.checkRequestVerificationSucceded(false)
             
             return
@@ -52,14 +65,17 @@ class PreyModule {
                 addAction(dict as! NSDictionary)
             }
             
+            // Run actions
+            runAction()
+            
             // Check ActionArray empty
-            if actionArray.count <= 0 {
-                print("Notification checkRequestVerificationSucceded OK")
+            if actionArray.isEmpty {
+                PreyLogger("Notification checkRequestVerificationSucceded OK")
                 PreyNotification.sharedInstance.checkRequestVerificationSucceded(true)
             }
             
         } catch let error as NSError{
-            print("json error: \(error.localizedDescription)")
+            PreyLogger("json error: \(error.localizedDescription)")
             PreyNotification.sharedInstance.checkRequestVerificationSucceded(false)
         }
     }
@@ -67,63 +83,79 @@ class PreyModule {
     // Add actions to Array
     func addAction(jsonDict:NSDictionary) {
         
+        // Check cmd command
+        if let jsonCMD = jsonDict.objectForKey(kInstruction.cmd.rawValue) as? NSDictionary {
+            // Recursive Function
+            addAction(jsonCMD)
+            return
+        }
+        
         // Action Name
-        guard let actionName: kAction = kAction(rawValue:jsonDict.objectForKey(kInstruction.TARGET.rawValue) as! String) else {
-            print("Error with ActionName")
+        guard let jsonName = jsonDict.objectForKey(kInstruction.target.rawValue) as? String else {
+            PreyLogger("Error with ActionName")
+            return
+        }
+        guard let actionName: kAction = kAction(rawValue: jsonName) else {
+            PreyLogger("Error with ActionName:rawValue")
             return
         }
         
         // Action Command
-        guard let actionCmd: kCommand = kCommand(rawValue:jsonDict.objectForKey(kInstruction.COMMAND.rawValue) as! String) else {
-            print("Error with ActionCmd")
+        guard let jsonCmd = jsonDict.objectForKey(kInstruction.command.rawValue) as? String else {
+            PreyLogger("Error with ActionCmd")
+            return
+        }
+        guard let actionCmd: kCommand = kCommand(rawValue: jsonCmd) else {
+            PreyLogger("Error with ActionCmd:rawvalue")
             return
         }
         
         // Action Options
-        let actionOptions: NSDictionary? = jsonDict.objectForKey(kInstruction.OPTIONS.rawValue) as? NSDictionary
+        let actionOptions: NSDictionary? = jsonDict.objectForKey(kInstruction.options.rawValue) as? NSDictionary
         
         // Add new Prey Action
         if let action:PreyAction = PreyAction.newAction(withName: actionName, withCommand: actionCmd, withOptions: actionOptions) {
-            runAction(action)
+            actionArray.append(action)
         }
     }
     
     // Run action
-    func runAction(action:PreyAction) {
+    func runAction() {
 
-        print("Run \(action.target.rawValue) action")
-        
-        if action.respondsToSelector(NSSelectorFromString(action.command.rawValue)) {
-            actionArray.append(action)
-            action.performSelectorOnMainThread(NSSelectorFromString(action.command.rawValue), withObject: nil, waitUntilDone: true)
+        for action in actionArray {
+            // Check selector
+            if (action.respondsToSelector(NSSelectorFromString(action.command.rawValue)) && !action.isActive) {
+                PreyLogger("Run \(action.target.rawValue) action")
+                action.performSelectorOnMainThread(NSSelectorFromString(action.command.rawValue), withObject: nil, waitUntilDone: true)
+            }
         }
     }
     
     // Check action status
     func checkStatus(action: PreyAction) {
         
-        print("Check \(action.target.rawValue) action")
+        PreyLogger("Check \(action.target.rawValue) action")
         
         // Check if preyAction isn't active
         if !action.isActive {
-            deleteAction(action.target)
+            deleteAction(action)
         }
      
         // Check ActionArray empty
-        if actionArray.count <= 0 {
-            print("Notification checkRequestVerificationSucceded OK")
+        if actionArray.isEmpty {
+            PreyLogger("Notification checkRequestVerificationSucceded OK")
             PreyNotification.sharedInstance.checkRequestVerificationSucceded(true)
         }
     }
     
     // Delete action
-    func deleteAction(target: kAction) {
+    func deleteAction(action: PreyAction) {
         
-        print("Delete \(target) action")
+        PreyLogger("Delete \(action.target) action")
         
-        for action in actionArray {
-            if action.target == target {
-                actionArray.removeObject(action)
+        for item in actionArray {
+            if ( item.target == action.target ) {
+                actionArray.removeObject(item)
             }
         }
     }

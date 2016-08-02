@@ -3,6 +3,7 @@
 </p>
 #Prey 
 [![AUR](https://img.shields.io/aur/license/yaourt.svg?maxAge=2592000)](http://www.gnu.org/licenses/gpl-3.0.en.html)
+[![Build Status](https://travis-ci.org/prey/prey-swift-client.svg?branch=master)](https://travis-ci.org/prey/prey-swift-client)
 
 Here you will find all the source code for the [current](https://bitly.com/preyios) and in development releases of the Prey client for iOS devices.
 
@@ -34,6 +35,6 @@ Follow Prey Project on Twitter ([@PreyProject](https://twitter.com/PreyProject))
 
 ## Legal
 
-Copyright © 2010-2016, Prey Inc.
+Copyright © 2016 Prey, Inc. All rights reserved.
 Released under the GPLv3 license.
 For full details see the LICENSE file included in this distribution.

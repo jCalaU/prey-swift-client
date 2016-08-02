@@ -37,13 +37,13 @@ class Location : PreyAction, CLLocationManagerDelegate {
         if let loc = location.first {
             
             let params:[String: AnyObject] = [
-                kLocation.LONGITURE.rawValue    : loc.coordinate.longitude,
-                kLocation.LATITUDE.rawValue     : loc.coordinate.latitude,
-                kLocation.ALTITUDE.rawValue     : loc.altitude,
-                kLocation.ACCURACY.rawValue     : loc.horizontalAccuracy,
-                kLocation.METHOD.rawValue       : "native"]
+                kLocation.lng.rawValue    : loc.coordinate.longitude,
+                kLocation.lat.rawValue     : loc.coordinate.latitude,
+                kLocation.alt.rawValue     : loc.altitude,
+                kLocation.accuracy.rawValue     : loc.horizontalAccuracy,
+                kLocation.method.rawValue       : "native"]
             
-            let locParam:[String: AnyObject] = [kAction.LOCATION.rawValue : params]
+            let locParam:[String: AnyObject] = [kAction.location.rawValue : params]
 
             isActive = false
             self.sendData(locParam, toEndpoint: dataDeviceEndpoint)
@@ -54,7 +54,7 @@ class Location : PreyAction, CLLocationManagerDelegate {
     
     // Did Update Locations
     func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print("New location received: \(locations.description)")
+        PreyLogger("New location received: \(locations.description)")
         
         if locations.first?.horizontalAccuracy < 0 {
             return
@@ -69,6 +69,6 @@ class Location : PreyAction, CLLocationManagerDelegate {
     
     // Did fail with error
     func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
-        print("Error getting location: \(error.description)")
+        PreyLogger("Error getting location: \(error.description)")
     }
 }

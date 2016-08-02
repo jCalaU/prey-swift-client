@@ -8,18 +8,23 @@
 
 import Foundation
 import CoreLocation
+import UIKit
 
-class Report: PreyAction, CLLocationManagerDelegate, LocationServiceDelegate {
+class Report: PreyAction, CLLocationManagerDelegate, LocationServiceDelegate, PhotoServiceDelegate {
  
     // MARK: Properties
     
-    var interval:Double = 10
-    
     var runReportTimer: NSTimer?
     
-    var reportData = NSMutableDictionary()
+    var interval:Double = 10*60
     
-    var reportLocation = ReportLocation()
+    var reportData      = NSMutableDictionary()
+    
+    var reportImages    = NSMutableDictionary()
+    
+    var reportLocation  = ReportLocation()
+    
+    var reportPhoto     = ReportPhoto()
     
     // MARK: Functions
     
@@ -27,46 +32,81 @@ class Report: PreyAction, CLLocationManagerDelegate, LocationServiceDelegate {
     func get() {
         
         // Set interval from jsonCommand
-        interval = (self.options?.objectForKey("interval")?.doubleValue)!*60
+        if let reportInterval = options?.objectForKey("interval") {
+            interval = reportInterval.doubleValue * 60
+        }
         
         // Report Timer
         runReportTimer = NSTimer.scheduledTimerWithTimeInterval(interval, target: self, selector: #selector(runReport(_:)), userInfo: nil, repeats: true)
         
         isActive = true
+        PreyConfig.sharedInstance.reportOptions = options
         PreyConfig.sharedInstance.isMissing = true
+        PreyConfig.sharedInstance.saveValues()
         runReport(runReportTimer!)
     }
     
     // Run report
     func runReport(timer:NSTimer) {
         
-        if PreyConfig.sharedInstance.isMissing {
-            reportLocation.delegate = self
-            reportLocation.startLocation()
-            //getPhoto()
-            
-            addWifiInfo()
-            
-        } else {
-            stop()
+        guard PreyConfig.sharedInstance.isMissing else {
+            stopReport()
+            return
+        }
+        
+        // Reset report info
+        reportImages.removeAllObjects()
+        reportData.removeAllObjects()
+        
+        // Stop location
+        reportLocation.stopLocation()
+        
+        // Get Location
+        reportLocation.waitForRequest = true
+        reportLocation.delegate = self
+        reportLocation.startLocation()
+        
+        // Get Photo
+        if UIApplication.sharedApplication().applicationState != .Background {
+            reportPhoto.waitForRequest = true
+            reportPhoto.delegate = self
+            reportPhoto.startSession()
+        }
+        
+        // Get Wifi Info
+        addWifiInfo()
+    }
+    
+    // Stop action report
+    override func stop() {
+     
+        for item in PreyModule.sharedInstance.actionArray {
+            if ( item.target == kAction.report ) {
+                (item as? Report)!.stopReport()
+            }
         }
     }
     
     // Stop report
-    func stop() {
-     
+    func stopReport() {
+        
         runReportTimer?.invalidate()
         isActive = false
         PreyConfig.sharedInstance.isMissing = false
+        PreyConfig.sharedInstance.saveValues()
         
         reportLocation.stopLocation()
+        reportPhoto.stopSession()
+        
+        PreyModule.sharedInstance.checkStatus(self)    
     }
     
     // Send report
-    func sendReport(param:NSMutableDictionary) {
+    func sendReport() {
         
-        
-        self.sendDataReport(param, toEndpoint: reportDataDeviceEndpoint)
+        if !reportPhoto.waitForRequest && !reportLocation.waitForRequest {
+            self.sendDataReport(reportData, images: reportImages, toEndpoint: reportDataDeviceEndpoint)
+        }
     }
     
     // Add wifi info
@@ -75,12 +115,34 @@ class Report: PreyAction, CLLocationManagerDelegate, LocationServiceDelegate {
         if let networkInfo = ReportWifi.getNetworkInfo() {
             
             let params:[String: AnyObject] = [
-                "ssid" : networkInfo["SSID"]!,
-                "mac_address": networkInfo["BSSID"]!]
+                "active_access_point[ssid]"          : networkInfo["SSID"]!,
+                "active_access_point[mac_address]"   : networkInfo["BSSID"]!]
             
             // Save network info to reportData
-            reportData.addEntriesFromDictionary(["active_access_point" : params])
+            reportData.addEntriesFromDictionary(params)
         }
+    }
+    
+    
+    // MARK: ReportPhoto Delegate
+    
+    // Photos received
+    func photoReceived(photos:NSMutableDictionary) {
+        
+        PreyLogger("get photos")
+        
+        // Set photos to reportImages
+        reportImages = photos
+        
+        // Set location wait
+        reportPhoto.waitForRequest = false
+
+        // Stop camera session
+        reportPhoto.stopSession()
+        reportPhoto.removeObserverForImage()
+        
+        // Send report to panel
+        sendReport()
     }
     
     // MARK: ReportLocation Delegate
@@ -91,18 +153,19 @@ class Report: PreyAction, CLLocationManagerDelegate, LocationServiceDelegate {
         if let loc = location.first {
 
             let params:[String : AnyObject] = [
-                kLocation.LONGITURE.rawValue    : loc.coordinate.longitude,
-                kLocation.LATITUDE.rawValue     : loc.coordinate.latitude,
-                kLocation.ALTITUDE.rawValue     : loc.altitude,
-                kLocation.ACCURACY.rawValue     : loc.horizontalAccuracy]
+                kReportLocation.LONGITURE.rawValue    : loc.coordinate.longitude,
+                kReportLocation.LATITUDE.rawValue     : loc.coordinate.latitude,
+                kReportLocation.ALTITUDE.rawValue     : loc.altitude,
+                kReportLocation.ACCURACY.rawValue     : loc.horizontalAccuracy]
             
             // Save location to reportData
-            reportData.addEntriesFromDictionary([kAction.LOCATION.rawValue : params])
+            reportData.addEntriesFromDictionary(params)
+            
+            // Set location wait
+            reportLocation.waitForRequest = false
             
             // Send report to panel
-            sendReport(reportData)
-            
-            stop()
+            sendReport()
         }
     }
 }

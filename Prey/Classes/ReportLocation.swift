@@ -16,6 +16,8 @@ protocol LocationServiceDelegate {
 class ReportLocation: NSObject, CLLocationManagerDelegate {
 
     // MARK: Properties
+
+    var waitForRequest = false
     
     let locManager = CLLocationManager()
 
@@ -28,6 +30,11 @@ class ReportLocation: NSObject, CLLocationManagerDelegate {
         locManager.delegate = self
         locManager.desiredAccuracy = kCLLocationAccuracyBest
         locManager.startUpdatingLocation()
+        locManager.pausesLocationUpdatesAutomatically = false
+        
+        if #available(iOS 9.0, *) {
+            locManager.allowsBackgroundLocationUpdates = true
+        }
     }
     
     // Stop Location
@@ -40,7 +47,11 @@ class ReportLocation: NSObject, CLLocationManagerDelegate {
     
     // Did Update Locations
     func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print("New location received: \(locations.description)")
+        PreyLogger("New location received: \(locations.description)")
+        
+        if !waitForRequest {
+            return
+        }
         
         if locations.first?.horizontalAccuracy < 0 {
             return
@@ -53,6 +64,6 @@ class ReportLocation: NSObject, CLLocationManagerDelegate {
     
     // Did fail with error
     func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
-        print("Error getting location: \(error.description)")
+        PreyLogger("Error getting location: \(error.description)")
     }
 }

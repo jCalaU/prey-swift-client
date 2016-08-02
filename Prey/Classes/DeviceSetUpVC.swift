@@ -7,14 +7,33 @@
 //
 
 import UIKit
+import CoreLocation
+import AVFoundation
 
-class DeviceSetUpVC: UIViewController {
+class DeviceSetUpVC: GAITrackedViewController {
 
+    
+    // MARK: Properties
+
+    @IBOutlet weak var titleLbl    : UILabel!
+    @IBOutlet weak var messageLbl  : UILabel!
+    
+    var messageTxt = ""
+
+    // Location Service Auth
+    let authLocation = CLLocationManager()
+
+    
+    // MARK: Init
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Register device to Apple Push Notification Service
-        PreyNotification.sharedInstance.registerForRemoteNotifications()        
+        
+        // View title for GAnalytics
+        self.screenName = "Congratulations"
+        
+        configureTextButton()
+        requestDeviceAuth()
     }
 
     override func didReceiveMemoryWarning() {
@@ -29,10 +48,50 @@ class DeviceSetUpVC: UIViewController {
         super.viewWillAppear(animated)
     }
     
-    override func viewWillDisappear(animated: Bool){
-        // Show navigationBar when disappear this ViewController
-        self.navigationController?.navigationBarHidden = false
+    func configureTextButton() {
+        titleLbl.text   = "Device set up!".localized.uppercaseString
+        messageLbl.text =  messageTxt
+    }
+    
+    // MARK: Functions
+    
+    func requestDeviceAuth() {
+
+        // Register device to Apple Push Notification Service
+        PreyNotification.sharedInstance.registerForRemoteNotifications()
+
+        // Location Service Auth
+        if #available(iOS 8.0, *) {
+            authLocation.requestAlwaysAuthorization()
+        } else {
+            authLocation.startUpdatingLocation()
+            authLocation.stopUpdatingLocation()
+        }
         
-        super.viewDidDisappear(animated)
+        // Camera Auth
+        AVCaptureDevice.requestAccessForMediaType(AVMediaTypeVideo, completionHandler: nil)
+    }
+    
+    // Ok pressed
+    @IBAction func showHomeView(sender: UIButton) {
+        
+        // Get SharedApplication delegate
+        guard let appWindow = UIApplication.sharedApplication().delegate?.window else {
+            PreyLogger("error with sharedApplication")
+            return
+        }
+        
+        if let resultController = self.storyboard!.instantiateViewControllerWithIdentifier(StoryboardIdVC.home.rawValue) as? HomeVC {
+
+            resultController.hidePasswordInput = true
+            
+            // Set controller to rootViewController
+            let navigationController:UINavigationController = appWindow!.rootViewController as! UINavigationController
+            
+            let transition:CATransition = CATransition()
+            transition.type             = kCATransitionFade
+            navigationController.view.layer.addAnimation(transition, forKey: "")
+            navigationController.setViewControllers([resultController], animated: false)
+        }
     }
 }

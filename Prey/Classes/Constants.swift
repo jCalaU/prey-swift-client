@@ -9,44 +9,20 @@
 import Foundation
 import UIKit
 
-// Definition of URLs
-#if DEBUG
-public let URLControlPanel: String = "https://control.preyhq.com/api/v2"
-#else
-public let URLControlPanel: String = "https://solid.preyproject.com/api/v2"
-#endif
+@available(iOS, deprecated=1.0, message="I'm not deprecated, please ***FIXME**")
+func FIXME()
+{
+}
 
-// Endpoint for LogIn
-public let logInEndpoint: String = "/profile.json"
-
-// Endpoint for SignUp
-public let signUpEndpoint: String = "/signup.json"
-
-// Endpoint for Add Devices
-public let devicesEndpoint: String = "/devices.json"
-
-// Endpoint for Device Data 
-public let dataDeviceEndpoint: String = NSString(format:"/devices/%@/data",(PreyConfig.sharedInstance.deviceKey!)) as String
-
-// Endpoint for Report Data
-public let reportDataDeviceEndpoint: String = NSString(format:"/devices/%@/reports",(PreyConfig.sharedInstance.deviceKey!)) as String
-
-// Endpoint for Response Data
-public let responseDeviceEndpoint: String = NSString(format:"/devices/%@/response",(PreyConfig.sharedInstance.deviceKey!)) as String
-
-
-// Endpoint for Device Actions
-public let actionsDeviceEndpoint: String = NSString(format:"/devices/%@.json",(PreyConfig.sharedInstance.deviceKey!)) as String
-
-
-// Http method definitions
-public enum Method: String {
-    case GET  = "GET"
-    case POST = "POST"
+// Storyboard controllerId
+enum StoryboardIdVC: String {
+    case PreyStoryBoard, alert, navigation, home, welcome, signUp, signIn, deviceSetUp, currentLocation, purchases, settings, grettings
 }
 
 // Def type device
-public let IS_IPAD: Bool = (UIDevice.currentDevice().userInterfaceIdiom != UIUserInterfaceIdiom.Phone)
+public let IS_IPAD          : Bool  = (UIDevice.currentDevice().userInterfaceIdiom != UIUserInterfaceIdiom.Phone)
+public let IS_IPHONE4S      : Bool  = (UIScreen.mainScreen().bounds.size.height-480 == 0)
+public let IS_OS_8_OR_LATER : Bool  = ((UIDevice.currentDevice().systemVersion as NSString).floatValue >= 8.0)
 
 // Number of Reload for Connection
 public let reloadConnection: Int = 5
@@ -57,6 +33,25 @@ public let delayTime: Double = 2
 // Email RegExp
 public let emailRegExp = "\\b([a-zA-Z0-9%_.+\\-]+)@([a-zA-Z0-9.\\-]+?\\.[a-zA-Z]{2,21})\\b"
 
+// App Version
+public let appVersion = NSBundle.mainBundle().infoDictionary!["CFBundleShortVersionString"] as! String
+
+// InAppPurchases
+public let subscription1Year = "1year_personal_plan_non_renewing_full"
+
+// GAI code
+public let GAICode  = "UA-8743344-7"
+
+// Font
+public let fontTitilliumBold    =  "TitilliumWeb-Bold"
+public let fontTitilliumRegular =  "TitilliumWeb-Regular"
+
+// PreyLogger
+public func PreyLogger(message:String) {
+    #if DEBUG
+    print(message)
+    #endif
+}
 
 // Validate email expression
 public func isInvalidEmail(userEmail: String, withPattern: String) -> Bool {
@@ -73,7 +68,7 @@ public func isInvalidEmail(userEmail: String, withPattern: String) -> Bool {
             isInvalid = false
         }
     } catch let error as NSError {
-        print("error RegEx: \(error.localizedDescription)")
+        PreyLogger("error RegEx: \(error.localizedDescription)")
     }
 
     return isInvalid
